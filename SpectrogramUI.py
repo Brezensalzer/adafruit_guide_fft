@@ -4,16 +4,16 @@
 # User interface for Spectrogram program.
 
 import matplotlib
-matplotlib.use('Qt4Agg')
-matplotlib.rcParams['backend.qt4']='PySide'
+matplotlib.use('Qt5Agg')
+matplotlib.rcParams['backend.qt5']='PySide2'
 from matplotlib.animation import FuncAnimation
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.cm import get_cmap
 from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import MultipleLocator, FuncFormatter
 import numpy as np
-from PySide import QtCore, QtGui
+from PySide2 import QtCore, QtGui, QtWidgets
 
 VERSION = 'Spectrogram v1.0'
 
@@ -131,7 +131,7 @@ class SpectrogramCanvas(FigureCanvas):
 			return ()
 
 
-class MainWindow(QtGui.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
 	def __init__(self, devices):
 		"""Set up the main window.  
 		   Devices should be a list of items that implement the SpectrogramDevice interface.
@@ -139,7 +139,7 @@ class MainWindow(QtGui.QMainWindow):
 		super(MainWindow, self).__init__()
 		self.devices = devices
 		self.openDevice = None
-		main = QtGui.QWidget()
+		main = QtWidgets.QWidget()
 		main.setLayout(self._setupMainLayout())
 		self.setCentralWidget(main)
 		self.status = self.statusBar()
@@ -181,16 +181,16 @@ class MainWindow(QtGui.QMainWindow):
 		self._closeDevice()
 
 	def _setupMainLayout(self):
-		controls = QtGui.QVBoxLayout()
-		controls.addWidget(QtGui.QLabel('<h3>%s</h3>' % VERSION))
-		author = QtGui.QLabel('by <a href="http://www.github.com/tdicola/">Tony DiCola</a>')
+		controls = QtWidgets.QVBoxLayout()
+		controls.addWidget(QtWidgets.QLabel('<h3>%s</h3>' % VERSION))
+		author = QtWidgets.QLabel('by <a href="http://www.github.com/tdicola/">Tony DiCola</a>')
 		author.setOpenExternalLinks(True)
 		controls.addWidget(author)
 		controls.addSpacing(10)
 		for control in self._setupControls():
 			controls.addWidget(control)
 		controls.addStretch(1)
-		layout = QtGui.QHBoxLayout()
+		layout = QtWidgets.QHBoxLayout()
 		layout.addLayout(controls)
 		self.spectrogram = SpectrogramCanvas(self)
 		layout.addWidget(self.spectrogram)
@@ -198,38 +198,38 @@ class MainWindow(QtGui.QMainWindow):
 
 	def _setupControls(self):
 		# Set up device group		
-		deviceCombo = QtGui.QComboBox()
+		deviceCombo = QtWidgets.QComboBox()
 		for device in sorted(self.devices, lambda a, b: cmp(a.get_name(), b.get_name())):
 			deviceCombo.addItem(device.get_name(), userData=device)
-		deviceBtn = QtGui.QPushButton('Open')
+		deviceBtn = QtWidgets.QPushButton('Open')
 		deviceBtn.clicked.connect(self._deviceButton)
 		self.deviceCombo = deviceCombo
 		self.deviceBtn = deviceBtn
-		device = QtGui.QGroupBox('Device')
-		device.setLayout(QtGui.QGridLayout())
-		device.layout().addWidget(QtGui.QLabel('Serial Port:'), 0, 0)
+		device = QtWidgets.QGroupBox('Device')
+		device.setLayout(QtWidgets.QGridLayout())
+		device.layout().addWidget(QtWidgets.QLabel('Serial Port:'), 0, 0)
 		device.layout().addWidget(deviceCombo, 0, 1)
 		device.layout().addWidget(deviceBtn, 1, 1)
 		# Set up device parameters group
-		fftSize = QtGui.QLabel()
-		sampleRate = QtGui.QLabel()
-		modifyBtn = QtGui.QPushButton('Modify')
+		fftSize = QtWidgets.QLabel()
+		sampleRate = QtWidgets.QLabel()
+		modifyBtn = QtWidgets.QPushButton('Modify')
 		modifyBtn.clicked.connect(self._modifyButton)
 		self.fftSize = fftSize
 		self.sampleRate = sampleRate
 		self.modifyBtn = modifyBtn
-		parameters = QtGui.QGroupBox('Device Parameters')
-		parameters.setLayout(QtGui.QGridLayout())
-		parameters.layout().addWidget(QtGui.QLabel('FFT Size:'), 0, 0)
+		parameters = QtWidgets.QGroupBox('Device Parameters')
+		parameters.setLayout(QtWidgets.QGridLayout())
+		parameters.layout().addWidget(QtWidgets.QLabel('FFT Size:'), 0, 0)
 		parameters.layout().addWidget(fftSize, 0, 1)
-		parameters.layout().addWidget(QtGui.QLabel('Sample Rate:'), 1, 0)
+		parameters.layout().addWidget(QtWidgets.QLabel('Sample Rate:'), 1, 0)
 		parameters.layout().addWidget(sampleRate, 1, 1)
 		parameters.layout().addWidget(modifyBtn, 2, 1)
 		parameters.setDisabled(True)
 		self.parameters = parameters
 		# Set up graph values group
-		lowSlider = QtGui.QSlider(QtCore.Qt.Orientation.Horizontal)
-		highSlider = QtGui.QSlider(QtCore.Qt.Orientation.Horizontal)
+		lowSlider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+		highSlider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
 		lowSlider.setRange(0, 100)
 		lowSlider.setValue(20)
 		lowSlider.valueChanged.connect(self._sliderChanged)
@@ -238,14 +238,14 @@ class MainWindow(QtGui.QMainWindow):
 		highSlider.valueChanged.connect(self._sliderChanged)
 		self.lowSlider = lowSlider
 		self.highSlider = highSlider
-		self.lowValue = QtGui.QLabel()
-		self.highValue = QtGui.QLabel()
-		graphs = QtGui.QGroupBox('Graphs')
-		graphs.setLayout(QtGui.QGridLayout())
-		graphs.layout().addWidget(QtGui.QLabel('Intensity Min:'), 0, 0)
+		self.lowValue = QtWidgets.QLabel()
+		self.highValue = QtWidgets.QLabel()
+		graphs = QtWidgets.QGroupBox('Graphs')
+		graphs.setLayout(QtWidgets.QGridLayout())
+		graphs.layout().addWidget(QtWidgets.QLabel('Intensity Min:'), 0, 0)
 		graphs.layout().addWidget(self.lowValue, 0, 1)
 		graphs.layout().addWidget(lowSlider, 1, 0, 1, 2)
-		graphs.layout().addWidget(QtGui.QLabel('Intensity Max:'), 2, 0)
+		graphs.layout().addWidget(QtWidgets.QLabel('Intensity Max:'), 2, 0)
 		graphs.layout().addWidget(self.highValue, 2, 1)
 		graphs.layout().addWidget(highSlider, 3, 0, 1, 2)
 		return (device, parameters, graphs)
