@@ -4,28 +4,28 @@
 // This code is part of the guide at http://learn.adafruit.com/fft-fun-with-fourier-transforms/
 
 #define ARM_MATH_CM4
-#include <arm_math.h>
+#include <CMSIS_DSP.h>
+//#include <arm_math.h>
 #include <Adafruit_NeoPixel.h>
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // CONIFIGURATION 
 // These values can be changed to alter the behavior of the spectrum display.
 ////////////////////////////////////////////////////////////////////////////////
 
-int SAMPLE_RATE_HZ = 9000;             // Sample rate of the audio in hertz.
-float SPECTRUM_MIN_DB = 30.0;          // Audio intensity (in decibels) that maps to low LED brightness.
-float SPECTRUM_MAX_DB = 60.0;          // Audio intensity (in decibels) that maps to high LED brightness.
+int SAMPLE_RATE_HZ = 10000;             // Sample rate of the audio in hertz.
+float SPECTRUM_MIN_DB = 55.0;          // Audio intensity (in decibels) that maps to low LED brightness.
+float SPECTRUM_MAX_DB = 85.0;          // Audio intensity (in decibels) that maps to high LED brightness.
 int LEDS_ENABLED = 1;                  // Control if the LED's should display the spectrum or not.  1 is true, 0 is false.
                                        // Useful for turning the LED display on and off with commands from the serial port.
 const int FFT_SIZE = 256;              // Size of the FFT.  Realistically can only be at most 256 
                                        // without running out of memory for buffers and other state.
-const int AUDIO_INPUT_PIN = 14;        // Input ADC pin for audio data.
+const int AUDIO_INPUT_PIN = PA0;        // Input ADC pin for audio data.
 const int ANALOG_READ_RESOLUTION = 10; // Bits of resolution for the ADC.
 const int ANALOG_READ_AVERAGING = 16;  // Number of samples to average with each ADC reading.
-const int POWER_LED_PIN = 13;          // Output pin for power LED (pin 13 to use Teensy 3.0's onboard LED).
-const int NEO_PIXEL_PIN = 3;           // Output pin for neo pixels.
-const int NEO_PIXEL_COUNT = 4;         // Number of neo pixels.  You should be able to increase this without
+const int POWER_LED_PIN = PC13;          // Output pin for power LED (pin 13 to use Teensy 3.0's onboard LED).
+const int NEO_PIXEL_PIN = PB3;           // Output pin for neo pixels.
+const int NEO_PIXEL_COUNT = 8;         // Number of neo pixels.  You should be able to increase this without
                                        // any other changes to the program.
 const int MAX_CHARS = 65;              // Max size of the input command buffer
 
@@ -35,7 +35,14 @@ const int MAX_CHARS = 65;              // Max size of the input command buffer
 // These shouldn't be modified unless you know what you're doing.
 ////////////////////////////////////////////////////////////////////////////////
 
-IntervalTimer samplingTimer;
+// See: https://github.com/stm32duino/wiki/wiki/HardwareTimer-library
+#if defined(TIM1)
+  TIM_TypeDef *Instance = TIM1;
+#else
+  TIM_TypeDef *Instance = TIM2;
+#endif
+HardwareTimer *samplingTimer = new HardwareTimer(Instance); 
+
 float samples[FFT_SIZE*2];
 float magnitudes[FFT_SIZE];
 int sampleCounter = 0;
@@ -51,12 +58,12 @@ float hues[NEO_PIXEL_COUNT];
 
 void setup() {
   // Set up serial port.
-  Serial.begin(38400);
+  SerialUSB.begin(115200);
   
   // Set up ADC and audio input.
   pinMode(AUDIO_INPUT_PIN, INPUT);
   analogReadResolution(ANALOG_READ_RESOLUTION);
-  analogReadAveraging(ANALOG_READ_AVERAGING);
+  //analogReadAveraging(ANALOG_READ_AVERAGING);
   
   // Turn on the power indicator LED.
   pinMode(POWER_LED_PIN, OUTPUT);
@@ -70,6 +77,7 @@ void setup() {
   memset(commandBuffer, 0, sizeof(commandBuffer));
   
   // Initialize spectrum display
+  // Reset sample buffer position and start callback at necessary rate.
   spectrumSetup();
   
   // Begin sampling audio
@@ -90,7 +98,7 @@ void loop() {
     {
       spectrumLoop();
     }
-  
+
     // Restart audio sampling.
     samplingBegin();
   }
@@ -224,14 +232,17 @@ void samplingCallback() {
   // Update sample buffer position and stop after the buffer is filled
   sampleCounter += 2;
   if (sampleCounter >= FFT_SIZE*2) {
-    samplingTimer.end();
+    samplingTimer->pause();
   }
 }
 
 void samplingBegin() {
-  // Reset sample buffer position and start callback at necessary rate.
+  samplingTimer->refresh();
+  samplingTimer->setOverflow((uint32_t)(1000000/SAMPLE_RATE_HZ), MICROSEC_FORMAT);
+  samplingTimer->attachInterrupt(samplingCallback);
+  samplingTimer->resume();
   sampleCounter = 0;
-  samplingTimer.begin(samplingCallback, 1000000/SAMPLE_RATE_HZ);
+  //samplingTimer.begin(samplingCallback, 1000000/SAMPLE_RATE_HZ);
 }
 
 boolean samplingIsDone() {
@@ -256,8 +267,8 @@ boolean samplingIsDone() {
 
 void parserLoop() {
   // Process any incoming characters from the serial port
-  while (Serial.available() > 0) {
-    char c = Serial.read();
+  while (SerialUSB.available() > 0) {
+    char c = SerialUSB.read();
     // Add any characters that aren't the end of a command (semicolon) to the input buffer.
     if (c != ';') {
       c = toupper(c);
@@ -276,7 +287,7 @@ void parserLoop() {
 // Macro used in parseCommand function to simplify parsing get and set commands for a variable
 #define GET_AND_SET(variableName) \
   else if (strcmp(command, "GET " #variableName) == 0) { \
-    Serial.println(variableName); \
+    SerialUSB.println(variableName); \
   } \
   else if (strstr(command, "SET " #variableName " ") != NULL) { \
     variableName = (typeof(variableName)) atof(command+(sizeof("SET " #variableName " ")-1)); \
@@ -285,32 +296,38 @@ void parserLoop() {
 void parseCommand(char* command) {
   if (strcmp(command, "GET MAGNITUDES") == 0) {
     for (int i = 0; i < FFT_SIZE; ++i) {
-      Serial.println(magnitudes[i]);
+      SerialUSB.println(magnitudes[i]);
     }
   }
   else if (strcmp(command, "GET SAMPLES") == 0) {
     for (int i = 0; i < FFT_SIZE*2; i+=2) {
-      Serial.println(samples[i]);
+      SerialUSB.println(samples[i]);
     }
   }
   else if (strcmp(command, "GET FFT_SIZE") == 0) {
-    Serial.println(FFT_SIZE);
+    SerialUSB.println(FFT_SIZE);
   }
+  else if (strcmp(command, "SET LEDS_ENABLED") == 0) {
+    if (LEDS_ENABLED == 1) {
+      LEDS_ENABLED = 0; 
+      for (int i = 0; i < NEO_PIXEL_COUNT; ++i) {
+        pixels.setPixelColor(i, 0);
+      }
+      pixels.show();
+    }
+    else {
+      LEDS_ENABLED = 1;         
+    }
+    SerialUSB.println(LEDS_ENABLED);
+  }
+
   GET_AND_SET(SAMPLE_RATE_HZ)
-  GET_AND_SET(LEDS_ENABLED)
+//  GET_AND_SET(LEDS_ENABLED)
   GET_AND_SET(SPECTRUM_MIN_DB)
   GET_AND_SET(SPECTRUM_MAX_DB)
   
   // Update spectrum display values if sample rate was changed.
   if (strstr(command, "SET SAMPLE_RATE_HZ ") != NULL) {
     spectrumSetup();
-  }
-  
-  // Turn off the LEDs if the state changed.
-  if (LEDS_ENABLED == 0) {
-    for (int i = 0; i < NEO_PIXEL_COUNT; ++i) {
-      pixels.setPixelColor(i, 0);
-    }
-    pixels.show();
   }
 }
