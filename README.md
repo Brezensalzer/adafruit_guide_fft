@@ -1,3 +1,7 @@
+# Updated for Qt5 and STM32 Arduino Core
+
+The code now works on a Blackpill STM32F411CEU board with the STM32 Arduino core. The python code was updated to use Qt5.
+
 # FFT: Fun with Fourier Transforms
 
 Code in support of the ['FFT: Fun with Fourier Transforms' guide](http://learn.adafruit.com/fft-fun-with-fourier-transforms) on the [Adafruit learning system](http://learn.adafruit.com/).
