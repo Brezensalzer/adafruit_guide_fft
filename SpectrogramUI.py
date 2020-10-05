@@ -259,22 +259,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
 	def _modifyButton(self):
 		# Create dialog
-		dialog = QtGui.QDialog(self)
+		dialog = QtWidgets.QDialog(self)
 		dialog.setModal(True)
-		sampleRate = QtGui.QSpinBox()
-		sampleRate.setRange(1,9000)
+		sampleRate = QtWidgets.QSpinBox()
+		sampleRate.setRange(1,20000)
 		sampleRate.setValue(self.openDevice.get_samplerate())
-		buttons = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel)
+		buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
 		buttons.accepted.connect(dialog.accept)
 		buttons.rejected.connect(dialog.reject)
-		dialog.setLayout(QtGui.QVBoxLayout())
-		dialog.layout().addWidget(QtGui.QLabel('Sample Rate (hz):'))
+		dialog.setLayout(QtWidgets.QVBoxLayout())
+		dialog.layout().addWidget(QtWidgets.QLabel('Sample Rate (hz):'))
 		dialog.layout().addWidget(sampleRate)
 		dialog.layout().addWidget(buttons)
 		dialog.setWindowTitle('Modify Device')
 		# Show dialog and update device & UI based on results.
 		try:
-			if dialog.exec_() == QtGui.QDialog.Accepted:
+			if dialog.exec_() == QtWidgets.QDialog.Accepted:
 				self.openDevice.set_samplerate(sampleRate.value())
 				self._updateDeviceUI()
 		except IOError as e:
